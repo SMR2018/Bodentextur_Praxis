@@ -1,0 +1,4 @@
+"";"variable";"RMSE";"R2"
+"1";"CLAY_ALR_PRED";2.01;0.86
+"2";"SAND_ALR_PRED";4.61;0.79
+"3";"SILT_ALR_PRED";3.49;0.5

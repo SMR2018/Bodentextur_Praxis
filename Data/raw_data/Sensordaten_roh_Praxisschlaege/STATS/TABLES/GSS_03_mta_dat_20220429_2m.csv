@@ -1,0 +1,5 @@
+field;area;variable;method;nmax;mdist;blk_l;blk_w;domain;expansion;resolution;epsg;date;n_orig;n_ras;RMSE_cv;min;max;mean;median;sd
+GSS_03;2.3;Rho1_nrm;BK;60;100;40;20;field_domain;10;2x2;25832;20220429;486;13221;1.012;15.09;18.12;16.48;16.46;0.59
+GSS_03;2.3;Gamma_nrm;BK;60;100;40;20;field_domain;10;2x2;25832;20220429;486;13221;0.006;1.86;2.02;1.96;1.97;0.04
+GSS_03;2.3;H_nrm;BK;60;100;40;20;field_domain;10;2x2;25832;20220429;486;13221;0.037;89.16;90.45;89.66;89.68;0.33
+GSS_03;2.3;SWI_nrm;BK;60;100;40;20;field_domain;10;2x2;25832;20220429;486;13221;0.448;10.59;13.06;11.86;11.95;0.54

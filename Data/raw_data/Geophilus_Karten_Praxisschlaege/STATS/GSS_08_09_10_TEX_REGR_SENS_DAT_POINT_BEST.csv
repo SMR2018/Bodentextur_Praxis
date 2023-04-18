@@ -1,0 +1,4 @@
+"y";"x";"mod";"info";"r2"
+"SILT";"Gamma";"exp";"grw_incr";0.8116
+"SAND";"Gamma";"lin";"";0.768
+"CLAY";"GWI";"exp";"grw_decr_pot";0.3045

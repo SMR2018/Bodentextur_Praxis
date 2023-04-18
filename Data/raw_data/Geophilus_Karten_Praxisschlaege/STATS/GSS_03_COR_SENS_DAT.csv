@@ -1,0 +1,11 @@
+"y";"x";"cor"
+"Gamma";"Gamma";1
+"DEM";"Gamma";0.58
+"ERa";"Gamma";-0.25
+"GWI";"Gamma";0.57
+"DEM";"DEM";1
+"ERa";"DEM";0.44
+"GWI";"DEM";-0.15
+"ERa";"ERa";1
+"GWI";"ERa";-0.93
+"GWI";"GWI";1
