@@ -1,0 +1,344 @@
+---
+geometry: "left=1cm,right=1cm,top=1cm,bottom=1.5cm"
+output:
+  pdf_document: 
+    extra_dependencies: ["float"]
+    keep_tex: true
+    includes:
+      in_header: columns.tex
+lang: de
+classoption: landscape
+params:
+ name_betrieb: "DLR-RP, Queckbrunnerhof, Schifferstadt"
+ feld: "Gießwagen-Fläche"
+ datum_geophilus_messung: "dd.mm.YY"
+ clay_file: "../Data/raw_data/Geophilus_Karten_Schifferstadt/Clay.tif"
+ silt_file: "../Data/raw_data/Geophilus_Karten_Schifferstadt/Silt.tif"
+ sand_file: "../Data/raw_data/Geophilus_Karten_Schifferstadt/Sand.tif"
+ name_der_flaeche: "'Gießwagen'"
+ neues_raster_speichern: "../Data/derived_data/Schifferstadt_Bodenklassen.tif"
+ neues_shapefile_speichern: "../Data/derived_data/Schifferstadt_Bodenklassen_shp"
+ layer_name: "Giesswagen_BK"
+---
+
+<!-- ### Knitr-Options -->
+
+```{r, include=FALSE}
+knitr::opts_chunk$set(cache = FALSE, echo = FALSE, fig.pos = "H", out.extra = "", message = FALSE, warning = FALSE)
+#fig.pos = "H", out.extra = "" geben an, dass Position der Grafiken genau an der Stelle
+#unter dem Chunk erscheint, und Latex sie nicht selbst plaziert
+```
+
+```{r, warning=FALSE, message=FALSE, include=FALSE}
+# Pakete laden:
+library(raster)
+library(dplyr)
+library(tidyr)
+library(purrr)
+library(ggplot2)
+library(cowplot)
+library(soiltexture)
+library(rgdal)
+library(kableExtra)
+```
+
+
+::: {.cols data-latex=""}
+::: {.col data-latex="{0.475\\textwidth}"}
+
+
+```{r, message=FALSE}
+info1 <- data.frame(
+        x = c("Gemüsebetrieb:", "Feld:", "Autorin Report:", "Geophilus-Karten:", 
+              "Datum Messung", "Datum Report"),
+        y = c(params$name_betrieb, params$feld, "Samantha Rubo, HGU", "Eric Boenecke, IGZ",
+              params$datum_geophilus_messung, format.Date(Sys.Date(), "%d.%m.%Y"))
+)
+
+kable(info1, "latex",col.names = NULL,
+      booktabs = T) %>%
+        kable_styling(#font_size = 12, 
+                #position="left",
+                full_width = TRUE, 
+                #latex_options = c("striped", "scale_down")
+        ) %>%
+        column_spec(1, bold = TRUE) %>%
+        as_image() #um im mehrsplatigen PDF zu drucken
+```
+
+<!-- ### Daten-In- und Output -->
+
+```{r, include=FALSE}
+#knit: (function(inputFile) { rmarkdown::render(inputFile, output_file = paste0("Giesswagen.pdf")) })
+# params <- list(
+#         clay_file= "../Data/raw_data/Geophilus_Karten_Schifferstadt/Clay.tif",
+#         silt_file= "../Data/raw_data/Geophilus_Karten_Schifferstadt/Silt.tif",
+#         sand_file= "../Data/raw_data/Geophilus_Karten_Schifferstadt/Sand.tif",
+#         name_der_flaeche= "'Gießwagen'",
+#         neues_raster_speichern= "../Data/derived_data/Schifferstadt_Bodenklassen.tif",
+#         neues_shapefile_speichern= "../Data/derived_data/Schifferstadt_Bodenklassen_shp",
+#         layer_name= "Giesswagen_BK")
+```
+
+
+<!-- ## Geophilus-Daten (Karten) einlesen und neue Dateinamen festlegen: -->
+
+```{r}
+geophilus_clay <- raster(params$clay_file)
+geophilus_silt <- raster(params$silt_file)
+geophilus_sand <- raster(params$sand_file)
+```
+
+<!-- ## Layer Ton, Schluff, Sand plotten -->
+
+```{r}
+cap2 <- paste0("Ton-, Schluff- und Sand-Anteil (\\%) der Fläche ", params$name_der_flaeche,  ". Die räumliche Auflösung beträgt ", paste0(res(geophilus_clay), collapse = "x"), " Meter.")
+```
+
+```{r,  warning=FALSE, fig.height=6, fig.width=8, fig.cap=cap2, fig.align='center'}
+#, out.height="400px"
+temp <- map_df(list("Ton" = geophilus_clay,
+                    "Schluff" = geophilus_silt,
+                    "Sand" = geophilus_sand),
+               ~as.data.frame(.x, xy = T) %>% set_names(c("x", "y", "Anteil")),
+               .id = "Aggregat") %>%
+        mutate_at("Aggregat", ~factor(., levels = c("Ton", "Schluff", "Sand"))) %>%
+        #UTM-Koordinaten in Distanzen umwandeln für Plot
+        mutate(across(c("x", "y"), ~.-min(., na.rm = TRUE), .names = "{.col}_distanz_m"))
+
+max1 <- plyr::round_any(max(temp$Anteil, na.rm = TRUE), accuracy = 10, f = ceiling)
+
+
+ggplot(temp, aes(x = x_distanz_m, y = y_distanz_m, fill = Anteil)) +
+        geom_raster() +
+        scale_fill_viridis_c("Anteil (%)", na.value = NA, limits = c(0,max1)) +
+        #coord_quickmap() + #Bei UTM-Koordinaten
+        coord_equal() +
+        facet_grid(.~Aggregat) +
+        theme_bw() +
+        xlab("Distanz (m)") + ylab("Distanz (m)") +
+        theme(panel.grid = element_blank(),
+              legend.position = "bottom",
+              legend.key.width = unit(80, "points"),
+              legend.margin = margin(t=10),
+              legend.title = element_text(size = 12, vjust = 0.9),
+              legend.text = element_text(size = 11),
+              axis.text = element_text(size = 11), axis.title = element_text(size=12),
+              text = element_text(size = 15))
+```
+
+\
+
+```{r}
+# Daten aus den drei einzelnen Karten in in einen data.frame auslesen:
+df <- data.frame("CLAY" = values(geophilus_clay),
+                 "SILT" = values(geophilus_silt),
+                 "SAND" = values(geophilus_sand)) %>%
+        bind_cols(as.data.frame(coordinates(geophilus_clay))) %>%
+        drop_na()
+```
+
+<!-- ## Klassen-Namen extrahieren -->
+
+```{r}
+df_klassen <- TT.points.in.classes(
+        tri.data = df,
+        class.sys = "DE.BK94.TT",
+        css.transf = TRUE # <<-- important
+)
+
+klassen_namen <- dimnames(df_klassen)[[2]]
+```
+
+<!-- ## Texturklassen der Bodenkundlichen Kartieranleitung: -->
+
+```{r, rows.print = 31}
+alle_klassen <- TT.classes.tbl(class.sys = "DE.BK94.TT")[,1:2] %>%
+        as_tibble %>%
+        mutate(Nr = 1:n(), .before = "abbr")
+```
+
+<!-- ## Farben nach Klasse und Subklasse sortieren -->
+
+```{r, warning=FALSE, message=FALSE}
+alle_klassen_erweitert <- alle_klassen %>%
+        mutate(Hauptklasse = substr(abbr,1,1),
+               Subklasse = substr(abbr,2,2),
+               Subsubklasse = substr(abbr,3,3))
+
+vec <- data.frame(Hauptklasse = c("T", "L", "U", "S"), sort1 = 1:4)
+vec2 <- data.frame(Subklasse = c("t", "l", "u", "s"), sort2 = 1:4)
+vec3 <- data.frame(Subsubklasse = c("","2","3","4","u","s"), sort3 = 1:6)
+
+
+farben <-
+        alle_klassen_erweitert %>%
+        left_join(vec) %>% left_join(vec2) %>% left_join(vec3) %>%
+        mutate(kleinKlasse = ifelse(Subklasse == stringr::str_to_lower(Hauptklasse), 1,2)) %>%
+        arrange(sort1,kleinKlasse,sort2,sort3) %>%
+        group_by(Hauptklasse) %>%
+        mutate(group_id = cur_group_id()) %>%
+        mutate(farbe = RColorBrewer::brewer.pal(max(group_id),"Spectral")[unique(group_id)]) %>%
+        mutate(farbe_scaled = colorspace::lighten(farbe,
+                                                  amount = seq(from=0, to = 0.7, length.out = n()),
+                                                  method = "relative",
+                                                  space = "HCL")) %>%
+        arrange(Nr) #damit in der richtigen Reihenfolgfe für BK-plot unten
+```
+
+<!-- ## DF um Bodenklassen ergänzen (numerisch) -->
+
+```{r}
+idx1 <- which(df_klassen == 1, arr.ind = TRUE)
+#klassen_aus_idx1 <- klassen_namen[idx1[,2]] #Klassen-Abkürzung
+klassen_aus_idx1 <- (1:length(klassen_namen))[idx1[,2]] #numerisch
+df_bodenklasse <- df %>% select(x,y) %>% mutate(Bodenklasse =klassen_aus_idx1)
+```
+
+<!-- ## Anteile der beobachteten Bodentextur-Klassen -->
+
+```{r, out.width='100%'}
+Klasse_uebersicht <- df_bodenklasse %>%
+        group_by(Bodenklasse) %>%
+        summarise(Flaechen_anteil = round(n()/nrow(.)*100,1)) %>%
+        left_join(alle_klassen, by=(c("Bodenklasse" = "Nr"))) %>%
+        arrange(desc(Flaechen_anteil)) %>%
+        select(Bodenklasse, abbr, name, Flaechen_anteil)
+
+#, cache=FALSE
+#library(kableExtra)
+kable(Klasse_uebersicht, "latex",
+      booktabs = T, 
+      col.names = c("Bodenklasse-Nr.", "Abk.", "Klasse",  "Flächenanteil (%)"),
+      caption = "Flächenanteil der beobachteten Bodentextur-Klassen."
+) %>%
+        kable_styling(full_width = TRUE,
+                      latex_options = c("striped"),#, "scale_down")
+        ) %>%
+        column_spec(column = 1:4, monospace = FALSE) %>%
+        as_image(file = "Tabelle1.png",
+                 latex_header_includes=c("\\usepackage[justification=raggedright,singlelinecheck=false]{caption}", " \\captionsetup[table]{name=Tabelle}" )) #um im mehrsplatigen PDF zu drucken
+```
+:::
+
+::: {.col data-latex="{0.05\\textwidth}"}
+.\
+<!-- Eine dritte schmale Spalte mit Leerzeile trennt die beiden Haupt-Spalten -->
+:::
+
+::: {.col data-latex="{0.475\\textwidth}"}
+<!-- ## DF in Raster und Shapefile mit Koordinaten umwandeln -->
+
+```{r}
+p1 <- projection(geophilus_clay)
+raster_bodenklasse <- rasterFromXYZ(df_bodenklasse, crs = p1)
+polygons_bodenklasse <- raster::rasterToPolygons(raster_bodenklasse,
+                                                 dissolve = TRUE,
+                                                 na.rm = TRUE)
+#Abkürzung und vollständigen BK-Namen in Shapefile als Attribut anfuegen
+polygons_bodenklasse$Abk <- pull(alle_klassen[polygons_bodenklasse$Bodenklasse, "abbr"])
+polygons_bodenklasse$Klasse_Name <- pull(alle_klassen[polygons_bodenklasse$Bodenklasse, "name"])
+
+#Karten speichern:
+writeRaster(raster_bodenklasse, filename = params$neues_raster_speichern,
+            overwrite = TRUE)
+rgdal::writeOGR(obj=polygons_bodenklasse, dsn = params$neues_shapefile_speichern,
+                layer= params$layer_name, driver="ESRI Shapefile",
+                overwrite_layer = TRUE)
+```
+
+```{r include=FALSE}
+#shapedatei wieder einlesen und in tidy df überführen. Für Linien der Bodenklassen in Karte
+shape_bodenklasse <- rgdal::readOGR(
+        dsn = paste0(params$neues_shapefile_speichern,"/", params$layer_name, ".shp"),
+        stringsAsFactors = F)
+shape_bodenklasse
+summary(shape_bodenklasse@data)
+
+shp_df <- broom::tidy(shape_bodenklasse, region = "Bdnklss") %>%
+        mutate(across(c("long", "lat"), ~.-min(., na.rm = TRUE), .names = "{.col}_distanz_m"))
+#head(shp_df)
+#ggplot() + geom_polygon(data = shp_df, aes(x = long, y = lat, group = group), colour = "black", fill = NA) #fill = id
+```
+
+<!-- ## Bodenklassen als Karte plotten -->
+
+```{r}
+cap <- "Karte der Bodentexturklassen auf der Grundlage des mit dem Geophilus gemessenen Ton-, Schluff- und Sandgehalts."
+```
+
+```{r, warning=FALSE, fig.height=2.5, out.width='60%', fig.cap=cap, fig.align='center'}
+#plot(raster_bodenklasse, breaks=farben$Nr, col = farben$farbe_scaled)
+temp <-as.data.frame(raster_bodenklasse, xy = T) %>%
+        #UTM-Koordinaten in Distanzen umwandeln für Plot
+        mutate(across(c("x", "y"), ~.-min(., na.rm = TRUE), .names = "{.col}_distanz_m"))
+
+ggplot(temp, aes(x = x_distanz_m, y = y_distanz_m, fill = as.factor(Bodenklasse))) +
+        geom_raster() +
+        #Ueberlagerung des Shapefiles (Konturen):
+        geom_polygon(data = shp_df,
+                     aes(x = long_distanz_m, y = lat_distanz_m, group = group),
+                     colour = "black", fill = NA) +
+        scale_fill_manual("Bodenklasse:", na.value = NA, #Farben nach Bodenklasse-Dreieck
+                          breaks = farben$Nr,
+                          values = farben$farbe_scaled,
+                          labels = farben$abbr) +
+        guides(fill = guide_legend(ncol = ceiling(length(unique(temp$Bodenklasse)) / 8))) + 
+        # scale_fill_discrete("Bodenklasse:", #Farben nach R
+        #                     na.value = NA,
+        #                     breaks = farben$Nr,
+        #                     labels = farben$abbr) +
+        coord_equal() +
+        xlab("Distanz (m)") + ylab("Distanz (m)") +
+        theme_bw() +
+        theme(panel.grid = element_blank())
+```
+
+<!-- ## Plot der Boden-Klasse nach Bodenkundlicher Kartieranleitung (1994): -->
+
+```{r}
+cap2 <- "Bodentextur-Klasse der beobachteten Fläche. Aus den Karten extrahierte Klassen sind für jedes Pixel als Punkt markiert (schwarz). "
+```
+
+```{r, fig.width=6, fig.height=6, out.width='60%', fig.align='center', fig.cap=cap2}
+par(pin=c(6,6), cex=0.5, cex.axis = 0.5, cex.lab = 0.5, cex.main = 0.5, lwd = 0.5)#, family="Arial")
+TT.plot(main = "",
+        class.sys = "DE.BK94.TT",
+        tri.data = df, pch=16, col = scales::alpha("black", 0.1), #Geophylus-Daten
+        #class.p.bg.col = TRUE,
+        class.p.bg.col = farben$farbe_scaled, #Eigene Farbskala
+        arrows.show = TRUE, grid.show = FALSE, lwd.axis = 0.5, lwd.lab = 0.5)
+par(new=TRUE) # Überlagerung der Labels
+TT.plot(main = "",class.sys = "DE.BK94.TT", frame.bg.col = scales::alpha("blue", 0.0),
+        arrows.show = FALSE, grid.show = FALSE, lwd.axis = 0.5, lwd.lab = 0.5)
+
+# p_BK_dreieck <- recordPlot()
+# invisible(dev.off())
+# # p_BK_dreieck hier plotten
+# grid::grid.newpage()
+# p_BK_dreieck
+```
+:::
+
+<!-- ### Anhang: Legende aller Bodenklassen aus Fig. 1. -->
+
+<!-- ::: {.col data-latex="{0.3\\textwidth}"} -->
+
+<!-- ```{r, cache=FALSE} -->
+
+<!-- kable(alle_klassen, "latex", -->
+
+<!--       booktabs = T, -->
+
+<!--       col.names =c("Nr.", "Abk.", "Klasse"), -->
+
+<!--       caption = "Texturklassen der Bodenkundlichen Kartieranleitung (1994).") %>% -->
+
+<!--         kable_styling() %>%#latex_options = c("striped", "scale_down")) %>% -->
+
+<!--         as_image() #um im mehrsplatigen PDF zu drucken -->
+
+<!-- ``` -->
+
+<!-- ::: -->
+:::
