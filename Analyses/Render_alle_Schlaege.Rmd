@@ -1,0 +1,104 @@
+---
+title: "R Notebook"
+---
+
+
+```{r}
+render_BK_Schlag <- function(schlag=schlag, betrieb=betrieb, name_betrieb=name_betrieb, feld=feld, datum_geophilus_messung=datum_geophilus_messung, name1=name1, dir1=dir1, dir2=dir2, files3=files3){
+        rmarkdown::render(quiet = TRUE, clean = TRUE,
+                          input = paste0(rstudioapi::getActiveProject(),
+                                         "/Analyses/Bodentextur_Report_default.Rmd"),  
+                          output_file = paste0(name1, ".pdf"), 
+                          params = list(
+                                  name_betrieb = name_betrieb,
+                                  feld = feld,
+                                  datum_geophilus_messung = datum_geophilus_messung,
+                                  clay_file= paste0(dir1, files3[which(grepl(x = files3, pattern = "CLAY"))]),
+                                  silt_file= paste0(dir1, files3[which(grepl(x = files3, pattern = "SILT"))]),
+                                  sand_file= paste0(dir1, files3[which(grepl(x = files3, pattern = "SAND"))]),
+                                  name_der_flaeche= feld,
+                                  neues_raster_speichern= paste0(dir2, name1, ".tif"),
+                                  neues_shapefile_speichern= paste0(dir2, name1, "_shp"),
+                                  layer_name= paste0(feld,"_BK"))
+        )
+}
+
+```
+
+#Beispiel der Anwendung: 
+```{r}
+# rm(list=ls()[ls()!="render_BK_Schlag"])
+# 
+# schlag <- "S01"
+# betrieb <- "Haas"
+# name_betrieb <- "Fa. Haas, Lampertheim"
+# feld <- "Lohe"
+# datum_geophilus_messung <- "17.01.2023"
+# 
+# name1 <- paste(schlag, "Fa", betrieb, "Feld", feld, sep = "_")
+# dir1 <- "../Data/raw_data/Geophilus_Karten_Praxisschlaege/"
+# dir2 <- "../Data/derived_data/"
+# files3 <- list.files(path = dir1, pattern = "GSS_01")
+# 
+# render_BK_Schlag(schlag=schlag, betrieb=betrieb, name_betrieb=name_betrieb, feld=feld, datum_geophilus_messung=datum_geophilus_messung, name1=name1, dir1=dir1, dir2=dir2, files3=files3)
+```
+
+
+
+```{r, eval=FALSE}
+render_everything <- function(schlag, betrieb, name_betrieb, feld, datum_geophilus_messung, pattern){
+        #rm(list=ls()[ls()!="render_BK_Schlag"]) #Workspace bereinigen
+        # schlag <- "S06"
+        # betrieb <- "Voll"
+        # name_betrieb <- "Fa. Voll, DLR"
+        # feld <- "Altrheinwiesen"
+        # datum_geophilus_messung <- "17.01.2023"
+        
+        name1 <- paste(schlag, "Fa", betrieb, "Feld", feld, sep = "_")
+        dir1 <- "../Data/raw_data/Geophilus_Karten_Praxisschlaege/"
+        dir2 <- "../Data/derived_data/"
+        files3 <- list.files(path = dir1, pattern = pattern, include.dirs = F, recursive = F)
+        
+        render_BK_Schlag(schlag=schlag, betrieb=betrieb, name_betrieb=name_betrieb, feld=feld, datum_geophilus_messung=datum_geophilus_messung, name1=name1, dir1=dir1, dir2=dir2, files3=files3)
+}
+```
+
+
+
+# Render alle Voll-Flächen:
+```{r, eval=FALSE}
+info_voll <- data.frame(
+        Schlaege = c("S_06", "S_07", "S_08_09_10"), #paste0("S", sprintf("%02.0f", 6:10)),
+        betrieb = "Voll",
+        name_betrieb = "Fa. Voll, DLR",
+        Felder = c("Altrheinwiesen", "Mittelgewann", "Stichelpfad - Langgarten - Leisbühl Süd"),
+        datum_geophilus_messung = "17.01.2023",
+        Pattern = c("GSS_06", "GSS_07", "GSS_08_09_10"))#paste0("GSS_", sprintf("%02.0f", 6:10)))
+info_voll
+```
+```{r, eval=FALSE}
+rm(list=ls()[!ls() %in% c("render_BK_Schlag", "render_everything", "info_voll")]) #Workspace bereinigen
+
+map(1:nrow(info_voll), 
+    ~render_everything(schlag = info_voll$Schlaege[.x], betrieb = info_voll$betrieb[.x], name_betrieb = info_voll$name_betrieb[.x], feld = info_voll$Felder[.x], datum_geophilus_messung = info_voll$datum_geophilus_messung[.x], pattern = info_voll$Pattern[.x]))
+```
+
+# Render alle Haas-Flächen:
+```{r, eval=FALSE}
+info_haas <- data.frame(
+        Schlaege = paste0("S", sprintf("%02.0f", 1:5)),
+        betrieb = "Haas",
+        name_betrieb = "Fa. Haas, Lampertheim",
+        Felder = c("Lohe", "Kämmerwiese", "Drusengewann", "Sauwörth", "Rosengarten"),
+        datum_geophilus_messung = "17.01.2023",
+        Pattern = paste0("GSS_", sprintf("%02.0f", 1:5)))
+info_haas
+```
+```{r, eval=FALSE}
+rm(list=ls()[!ls() %in% c("render_BK_Schlag", "render_everything", "info_haas")]) #Workspace bereinigen
+
+map(1:nrow(info_haas), 
+    ~render_everything(schlag = info_haas$Schlaege[.x], betrieb = info_haas$betrieb[.x], name_betrieb = info_haas$name_betrieb[.x], feld = info_haas$Felder[.x], datum_geophilus_messung = info_haas$datum_geophilus_messung[.x], pattern = info_haas$Pattern[.x]))
+```
+
+
