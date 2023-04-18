@@ -1,0 +1,35 @@
+
+
+% Seitenzahlen unterdruecken:
+\pagenumbering{gobble}
+
+
+%Auf deutsche Captions einstellen:
+\usepackage{caption}
+\captionsetup[figure]{name=Abbildung}
+\captionsetup[table]{name=Tabelle}
+
+\usepackage[singlelinecheck=off]{caption}
+
+
+% Spalten ermoeglichen:
+
+\newenvironment{cols}[1][]{}{}
+
+\newenvironment{col}[1]{\begin{minipage}{#1}\ignorespaces}{%
+\end{minipage}
+\ifhmode\unskip\fi
+\aftergroup\useignorespacesandallpars}
+
+\def\useignorespacesandallpars#1\ignorespaces\fi{%
+#1\fi\ignorespacesandallpars}
+
+\makeatletter
+\def\ignorespacesandallpars{%
+  \@ifnextchar\par
+    {\expandafter\ignorespacesandallpars\@gobble}%
+    {}%
+}
+\makeatother
+
+
