@@ -1,0 +1,142 @@
+---
+title: "R Notebook"
+---
+```{r}
+library(dplyr)
+library(xml2)
+library(purrr)
+library(soiltexture)
+library(ggplot2)
+```
+
+
+## Texturklassen der Bodenkundlichen Kartieranleitung:
+```{r, rows.print = 31}
+alle_klassen <- TT.classes.tbl(class.sys = "DE.BK94.TT")[,1:2] %>%
+        as_tibble %>%
+        mutate(Nr = 1:n(), .before = "abbr")
+```
+
+## Farben nach Klasse und Subklasse sortieren
+```{r, warning=FALSE, message=FALSE}
+alle_klassen_erweitert <- alle_klassen %>%
+        mutate(Hauptklasse = substr(abbr,1,1),
+               Subklasse = substr(abbr,2,2),
+               Subsubklasse = substr(abbr,3,3))
+
+vec <- data.frame(Hauptklasse = c("T", "L", "U", "S"), sort1 = 1:4)
+vec2 <- data.frame(Subklasse = c("t", "l", "u", "s"), sort2 = 1:4)
+vec3 <- data.frame(Subsubklasse = c("","2","3","4","u","s"), sort3 = 1:6)
+
+
+farben <-
+        alle_klassen_erweitert %>%
+        left_join(vec) %>% left_join(vec2) %>% left_join(vec3) %>%
+        mutate(kleinKlasse = ifelse(Subklasse == stringr::str_to_lower(Hauptklasse), 
+                                    1,2)) %>%
+        arrange(sort1,kleinKlasse,sort2,sort3) %>%
+        group_by(Hauptklasse) %>%
+        mutate(group_id = cur_group_id()) %>%
+        mutate(farbe = RColorBrewer::brewer.pal(
+                max(group_id),"Spectral")[unique(group_id)]) %>%
+        mutate(farbe_scaled = colorspace::lighten(
+                farbe,
+                amount = seq(from=0, to = 0.7, length.out = n()),
+                method = "relative",
+                space = "HCL")) #%>%
+# arrange(Nr) #damit in der richtigen Reihenfolgfe für BK-plot unten
+```
+
+## Labels für qml-Stildatei anpassen und Farben in rgb Werte (+alpha) konvertieren
+```{r, rows.print = 31}
+farben_qml <- farben %>% ungroup() %>%
+        mutate(label = paste0(#Nr, ") ", 
+                              abbr, ": ", name)) %>% 
+        rowwise() %>%
+        mutate(farbe_rgb = paste0(
+                c(DescTools::ColToRgb(farbe_scaled),255), 
+                collapse = ",")) %>% #alpha-Wert 
+        ungroup() %>%
+        #arrange(Nr) %>%
+        select(Nr, label, farbe_rgb, farbe_scaled)  %>% 
+        mutate(neue_ordnung = as.factor(1:31))
+```
+
+## Farben plotten: Richtigkeit prüfen
+```{r}
+#Sortierung nach HAuptgruppe statt Nummer
+ggplot(farben_qml, 
+       aes(x=1:31, y=2, col = neue_ordnung)) + 
+        geom_point(size=6) + 
+        scale_color_manual(values = farben_qml$farbe_scaled, labels = farben_qml$label)
+```
+
+
+# Roh-QML einlesen:
+Zunächst wird in QGIS ein qml erstellt mit der passenden Anzahl an Farben (31 wie Bodenklassen + 1 Leer).
+Diese werden als Text eingelesen und an entsprechenden Stellen durch die gewünschte Farbe und Label korrigiert
+
+
+#Roh-QLM einlesen:
+```{r}
+t1 <- readLines("../Data/derived_data/Bodenklassen_Legende_Shape_roh_31Klassen.qml")
+#t1[1:38]
+```
+
+#Attribut ersetzen:
+```{r}
+p_attribut <- 'attr=\" generate_series(1,31)\"' #Attribut aus Sequenz-Erstellung
+new_attr <- 'attr=\"Bdnklss\"' #Attribut in Attribut-Table
+#grepl(x = t1[3], pattern = p_attribut, fixed = T)
+
+#Attribut ersetzen:
+t1[3] <- gsub(x = t1[3], pattern = p_attribut, replacement = new_attr, fixed = T)
+```
+
+#Labels ersetzen:
+```{r}
+#Die labels befinden sich im Reiter 'Categories'
+idx0 <- which(t1 == '    <categories>') +1
+idx1 <- which(t1 == '    </categories>') -1
+
+t1[idx0:idx1] <- paste0('      <category type=\"double\" symbol=\"',0:(idx1-idx0-1), '\" render=\"true\" value=\"', 
+               farben_qml$Nr, 
+               '\" label=\"', farben_qml$label ,'\"/>')
+```
+
+
+#Farben ersetzen:
+```{r}
+#Somboly-Ebenen sortieren (Original 10 vor 2, etc.)
+
+idx_all_symbol_names <- which(!is.na(stringr::str_match(t1, '      <symbol frame_rate=\"10\" alpha=\"1\" type=\"fill\" name=\"')[,1]))
+
+t1[idx_all_symbol_names] <- paste0('      <symbol frame_rate=\"10\" alpha=\"1\" type=\"fill\" name=\"', c(0:31),'\" force_rhr=\"0\" is_animated=\"0\" clip_to_extent=\"1\">')
+```
+
+
+```{r}
+#befindet sich im Reiter Symbols. Untergruppen je Bodenklasse
+p1 <- '            <Option type=\"QString\" value=\"51,89,238,255\" name=\"color\"/>'
+idx <- which(t1 == p1)
+idx
+
+```
+
+```{r}
+new_color_line <- paste0('            <Option type=\"QString\" value=\"',
+                         farben_qml$farbe_rgb, 
+                         '\" name=\"color\"/>')
+#new_color_line
+t1[idx] <- new_color_line
+```
+
+
+
+
+```{r}
+#data.table::fwrite(t1, "test.qml", col.names = F)
+
+writeLines(t1, "../Data/derived_data/Bodenklassen_Legende_Shape.qml")
+```
+
