@@ -1,21 +1,12 @@
-﻿KA5;Kuerzel_LUFA;Name_LUFA;Code_LUFA;Acker_Bodenschaetzung;Gruenland_Bodenschaetzung;;;;;;;;;
-Ss, Su2 ;S ;Sand ;1;S ;S;;;;;;;;;
-St2, Sl2, Sl3, Su3, Su4 ;lS ;lehmiger Sand ;2;Sl ;S;;;;;;;;;
-Us, Uu ;sU ;sandiger Schluff ;2;lS ;lS;;;;;;;;;
-Sl4, Slu ;ssL ;stark sandiger Lehm ;3;SL ;lS;;;;;;;;;
-Uls, Ut2, Ut3 ;lU ;lehmiger Schluff ;3;SL ;lS;;;;;;;;;
-St3, Ls2, Ls3, Ls4, Lt2 ;sL ;sandiger Lehm ;4;sL ;L;;;;;;;;;
-Lu, Ut4 ;uL ;schluffiger Lehm ;4;L ;L;;;;;;;;;
-Lts, Ts3, Ts4 ;L ;Lehm ;4;L ;L;;;;;;;;;
-Tu3, Tu4 ;utL ;schluffig-toniger Lehm ;5;LT ;T;;;;;;;;;
-Lt3 ;tL ;toniger Lehm ;5;LT ;T;;;;;;;;;
-Tu2, Tl, Ts2, Tt ;T ;Ton ;5;T ;T;;;;;;;;;
-;;;;;;;;;;;;;;
-;;;;;;;;;;;;;;
-;;;;;;;;;;;;;;
-;;;;;;;;;;;;;;
-;;;;;;;;;;;;;;
-;;;;;;;;;;;;;;
-;;;;;;;;;;;;;;Bodenkundliche
-;;;;;;;;;;;;;;Kartieranleitung (KA5)
-;;;;;;;;;;;;;;LUFA NRW Bodenschätzung
+KA5	Kuerzel_LUFA	Name_LUFA	Code_LUFA	Acker_Bodenschaetzung	Gruenland_Bodenschaetzung
+Ss,Su2	S	Sand	1	S	S
+St2,Sl2,Sl3,Su3,Su4	lS	lehmiger Sand	2	Sl	S
+Us,Uu	sU	sandiger Schluff	2	lS	lS
+Sl4,Slu	ssL	stark sandiger Lehm	3	SL	lS
+Uls,Ut2,Ut3	lU	lehmiger Schluff	3	SL	lS
+St3,Ls2,Ls3,Ls4,Lt2	sL	sandiger Lehm	4	sL	L
+Lu,Ut4	uL	schluffiger Lehm	4	L	L
+Lts,Ts3,Ts4	L	Lehm	4	L	L
+Tu3,Tu4	utL	schluffig-toniger Lehm	5	LT	T
+Lt3	tL	toniger Lehm	5	LT	T
+Tu2,Tl,Ts2,Tt	T	Ton	5	T	T
