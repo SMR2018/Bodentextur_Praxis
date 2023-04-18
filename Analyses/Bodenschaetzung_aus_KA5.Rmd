@@ -1,0 +1,41 @@
+---
+title: "KA5 übertragen in Bodenschätzung"
+
+---
+
+```{r}
+library(dplyr)
+library(tidyr)
+library(sf)
+
+```
+# Tabelle zur Klassen Konvertierung einlesen
+```{r}
+df <- data.table::fread("../Data/Bodenklasse_KA5_Bodenschaetzung.csv")
+df
+```
+```{r}
+df_long <- df %>% 
+        select(KA5, Acker_Bodenschaetzung) %>%
+        tidyr::separate(col = KA5, 
+                        sep = ",", 
+                        into = paste0("KA5_", 1:5), 
+                        remove = T) %>%
+        pivot_longer(cols = -Acker_Bodenschaetzung, 
+                     names_to = "temp", 
+                     values_to = "Bodenklasse_KA5", 
+                     values_drop_na = T, ) %>% 
+        select(-temp)
+df_long
+```
+
+
+## Shapefile mit KA5-Klassifikation einlesen:
+```{r}
+shp <- sf::read_sf("../Data/derived_data/S01_Fa_Haas_Feld_Lohe_shp/Lohe_BK.shp")
+```
+
+```{r}
+shp %>% left_join()
+```
+
