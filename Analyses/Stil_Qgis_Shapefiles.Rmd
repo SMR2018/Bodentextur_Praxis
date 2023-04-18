@@ -79,54 +79,71 @@ Diese werden als Text eingelesen und an entsprechenden Stellen durch die gewüns
 
 #Roh-QLM einlesen:
 ```{r}
-t1 <- readLines("../Data/derived_data/Bodenklassen_Legende_Shape_roh_31Klassen.qml")
+#t1 <- readLines("../Data/derived_data/Bodenklassen_Legende_Shape_roh_31Klassen.qml") #Mac
+t1 <- readLines("../Data/derived_data/Bodenklassen_Legende_Shape_Windows.qml") #Windows
+
 #t1[1:38]
 ```
 
 #Attribut ersetzen:
 ```{r}
-p_attribut <- 'attr=\" generate_series(1,31)\"' #Attribut aus Sequenz-Erstellung
-new_attr <- 'attr=\"Bdnklss\"' #Attribut in Attribut-Table
-#grepl(x = t1[3], pattern = p_attribut, fixed = T)
-
-#Attribut ersetzen:
-t1[3] <- gsub(x = t1[3], pattern = p_attribut, replacement = new_attr, fixed = T)
+# p_attribut <- 'attr=\" generate_series(1,31)\"' #Attribut aus Sequenz-Erstellung
+# new_attr <- 'attr=\"Bdnklss\"' #Attribut in Attribut-Table
+# #grepl(x = t1[3], pattern = p_attribut, fixed = T)
+# 
+# #Attribut ersetzen:
+# t1[3] <- gsub(x = t1[3], pattern = p_attribut, replacement = new_attr, fixed = T)
 ```
 
 #Labels ersetzen:
 ```{r}
-#Die labels befinden sich im Reiter 'Categories'
-idx0 <- which(t1 == '    <categories>') +1
-idx1 <- which(t1 == '    </categories>') -1
-
-t1[idx0:idx1] <- paste0('      <category type=\"double\" symbol=\"',0:(idx1-idx0-1), '\" render=\"true\" value=\"', 
-               farben_qml$Nr, 
-               '\" label=\"', farben_qml$label ,'\"/>')
+# #Die labels befinden sich im Reiter 'Categories'
+# idx0 <- which(t1 == '    <categories>') +1
+# idx1 <- which(t1 == '    </categories>') -1
+# 
+# t1[idx0:idx1] <- paste0('      <category type=\"double\" symbol=\"',0:(idx1-idx0-1), '\" render=\"true\" value=\"', 
+#                farben_qml$Nr, 
+#                '\" label=\"', farben_qml$label ,'\"/>')
 ```
 
 
 #Farben ersetzen:
 ```{r}
 #Somboly-Ebenen sortieren (Original 10 vor 2, etc.)
+          
+idx_all_symbol_names <- which(
+        !is.na(
+                stringr::str_match(
+                        t1, 
+                        #'      <symbol frame_rate=\"10\" alpha=\"1\" type=\"fill\" name=\"')[,1]
+                        '      <symbol type=\"fill\" name=\"')[,1]
+                
+                ))
 
-idx_all_symbol_names <- which(!is.na(stringr::str_match(t1, '      <symbol frame_rate=\"10\" alpha=\"1\" type=\"fill\" name=\"')[,1]))
-
-t1[idx_all_symbol_names] <- paste0('      <symbol frame_rate=\"10\" alpha=\"1\" type=\"fill\" name=\"', c(0:31),'\" force_rhr=\"0\" is_animated=\"0\" clip_to_extent=\"1\">')
+t1[idx_all_symbol_names] <- paste0(
+        #'      <symbol frame_rate=\"10\" alpha=\"1\" type=\"fill\" name=\"', c(0:30),'\" force_rhr=\"0\" is_animated=\"0\" clip_to_extent=\"1\">'
+        #'<symbol type="fill" name=', c(0:30),' force_rhr="0" alpha="1" clip_to_extent="1">'
+        '      <symbol type=\"fill\" name=\"', c(0:30),'\" force_rhr=\"0\" alpha=\"1\" clip_to_extent=\"1\">')
 ```
 
 
 ```{r}
 #befindet sich im Reiter Symbols. Untergruppen je Bodenklasse
-p1 <- '            <Option type=\"QString\" value=\"51,89,238,255\" name=\"color\"/>'
+#p1 <- '            <Option type=\"QString\" value=\"51,89,238,255\" name=\"color\"/>'
+p1 <- '          <prop k=\"color\" v=\"0,0,255,255\"/>'
 idx <- which(t1 == p1)
 idx
 
 ```
 
 ```{r}
-new_color_line <- paste0('            <Option type=\"QString\" value=\"',
+# new_color_line <- paste0('            <Option type=\"QString\" value=\"',
+#                          farben_qml$farbe_rgb, 
+#                          '\" name=\"color\"/>')
+
+new_color_line <- paste0('          <prop k=\"color\" v=\"',
                          farben_qml$farbe_rgb, 
-                         '\" name=\"color\"/>')
+                         '\"/>')
 #new_color_line
 t1[idx] <- new_color_line
 ```
@@ -137,6 +154,6 @@ t1[idx] <- new_color_line
 ```{r}
 #data.table::fwrite(t1, "test.qml", col.names = F)
 
-writeLines(t1, "../Data/derived_data/Bodenklassen_Legende_Shape.qml")
+writeLines(t1, "../Data/derived_data/Bodenklassen_Legende_Shape_all_platforms.qml")
 ```
 
