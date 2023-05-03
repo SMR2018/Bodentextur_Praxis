@@ -2,6 +2,10 @@
 title: "R Notebook"
 ---
 
+```{r}
+library(dplyr)
+library(purrr)
+```
 
 ```{r}
 render_BK_Schlag <- function(schlag=schlag, betrieb=betrieb, name_betrieb=name_betrieb, feld=feld, datum_geophilus_messung=datum_geophilus_messung, name1=name1, dir1=dir1, dir2=dir2, files3=files3){
@@ -68,7 +72,7 @@ render_everything <- function(schlag, betrieb, name_betrieb, feld, datum_geophil
 # Render alle Voll-Flächen:
 ```{r, eval=FALSE}
 info_voll <- data.frame(
-        Schlaege = c("S_06", "S_07", "S_08_09_10"), #paste0("S", sprintf("%02.0f", 6:10)),
+        Schlaege = c("S06", "S07", "S08_09_10"), #paste0("S", sprintf("%02.0f", 6:10)),
         betrieb = "Voll",
         name_betrieb = "Fa. Voll, DLR",
         Felder = c("Altrheinwiesen", "Mittelgewann", "Stichelpfad - Langgarten - Leisbühl Süd"),
