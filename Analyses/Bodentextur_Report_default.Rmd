@@ -31,13 +31,13 @@ knitr::opts_chunk$set(cache = FALSE, echo = FALSE, fig.pos = "H", out.extra = ""
 
 ```{r, warning=FALSE, message=FALSE, include=FALSE}
 # Pakete laden:
-library(raster)
 library(dplyr)
 library(tidyr)
 library(purrr)
 library(ggplot2)
 library(cowplot)
 library(soiltexture)
+library(raster)
 library(rgdal)
 library(kableExtra)
 ```
@@ -47,7 +47,7 @@ library(kableExtra)
 ::: {.col data-latex="{0.475\\textwidth}"}
 
 
-```{r, message=FALSE}
+```{r, message=FALSE, eval=TRUE}
 info1 <- data.frame(
         x = c("Gemüsebetrieb:", "Feld:", "Autorin Report:", "Geophilus-Karten:", 
               "Datum Messung", "Datum Report"),
@@ -95,7 +95,7 @@ geophilus_sand <- raster(params$sand_file)
 cap2 <- paste0("Ton-, Schluff- und Sand-Anteil (\\%) der Fläche ", params$name_der_flaeche,  ". Die räumliche Auflösung beträgt ", paste0(res(geophilus_clay), collapse = "x"), " Meter.")
 ```
 
-```{r,  warning=FALSE, fig.height=6, fig.width=8, fig.cap=cap2, fig.align='center'}
+```{r fig.align='center', fig.cap=cap2, fig.height=6, fig.width=8, warning=FALSE, eval=TRUE}
 #, out.height="400px"
 temp <- map_df(list("Ton" = geophilus_clay,
                     "Schluff" = geophilus_silt,
@@ -189,21 +189,45 @@ farben <-
 <!-- ## DF um Bodenklassen ergänzen (numerisch) -->
 
 ```{r}
-idx1 <- which(df_klassen == 1, arr.ind = TRUE)
-#klassen_aus_idx1 <- klassen_namen[idx1[,2]] #Klassen-Abkürzung
-klassen_aus_idx1 <- (1:length(klassen_namen))[idx1[,2]] #numerisch
-df_bodenklasse <- df %>% select(x,y) %>% mutate(Bodenklasse =klassen_aus_idx1)
+x <- df_klassen %>% as.data.frame %>% dplyr::select(where(~sum(.x) > 0))
+#x
+klassen_bild <- names(x) #Klassen-Namen
+klassen_bild_nr <- alle_klassen %>% filter(abbr %in% klassen_bild)
+
+idx2 <- map(1:nrow(klassen_bild_nr),
+    ~which(x[[klassen_bild_nr$abbr[.x]]] == 1)
+    )
+
+
+x <- x %>% mutate(bk = NA) 
+
+for(i in 1:length(idx2)){
+x$bk[idx2[[i]]] <- klassen_bild_nr$abbr[i]
+}
+
+df$abbr <- x$bk
+df_bodenklasse <- df %>% left_join(klassen_bild_nr, by = c("abbr")) %>% 
+        dplyr::select(x,y,abbr,Bodenklasse = Nr, name)
+
+
+
+##<!-- # alt:  -->
+
+# idx1 <- which(df_klassen == 1, arr.ind = TRUE)
+# #klassen_aus_idx1 <- klassen_namen[idx1[,2]] #Klassen-Abkürzung
+# klassen_aus_idx1 <- (1:length(klassen_namen))[idx1[,2]] #numerisch
+# df_bodenklasse <- df %>% select(x,y) %>% mutate(Bodenklasse =klassen_aus_idx1)
 ```
 
 <!-- ## Anteile der beobachteten Bodentextur-Klassen -->
-
-```{r, out.width='100%'}
+ 
+```{r, out.width='100%', eval=TRUE}
 Klasse_uebersicht <- df_bodenklasse %>%
-        group_by(Bodenklasse) %>%
-        summarise(Flaechen_anteil = round(n()/nrow(.)*100,1)) %>%
-        left_join(alle_klassen, by=(c("Bodenklasse" = "Nr"))) %>%
+        group_by(Bodenklasse, abbr, name) %>%
+        summarise(Flaechen_anteil = round(n()/nrow(.)*100,1), .groups = "drop") %>%
+        #left_join(alle_klassen, by=(c("Bodenklasse" = "Nr"))) %>%
         arrange(desc(Flaechen_anteil)) %>%
-        select(Bodenklasse, abbr, name, Flaechen_anteil)
+        dplyr::select(Bodenklasse, abbr, name, Flaechen_anteil)
 
 #, cache=FALSE
 #library(kableExtra)
@@ -217,7 +241,7 @@ kable(Klasse_uebersicht, "latex",
         ) %>%
         column_spec(column = 1:4, monospace = FALSE) %>%
         as_image(file = "Tabelle1.png",
-                 latex_header_includes=c("\\usepackage[justification=raggedright,singlelinecheck=false]{caption}", " \\captionsetup[table]{name=Tabelle}" )) #um im mehrsplatigen PDF zu drucken
+                 latex_header_includes=c("\\usepackage[justification =raggedright,singlelinecheck=false, tablename=Tabelle]{caption}")) #um im mehrsplatigen PDF zu drucken
 ```
 :::
 
@@ -231,7 +255,7 @@ kable(Klasse_uebersicht, "latex",
 
 ```{r}
 p1 <- projection(geophilus_clay)
-raster_bodenklasse <- rasterFromXYZ(df_bodenklasse, crs = p1)
+raster_bodenklasse <- rasterFromXYZ(df_bodenklasse %>% dplyr::select(x,y,Bodenklasse), crs = p1)
 polygons_bodenklasse <- raster::rasterToPolygons(raster_bodenklasse,
                                                  dissolve = TRUE,
                                                  na.rm = TRUE)
@@ -267,7 +291,7 @@ shp_df <- broom::tidy(shape_bodenklasse, region = "Bdnklss") %>%
 cap <- "Karte der Bodentexturklassen auf der Grundlage des mit dem Geophilus gemessenen Ton-, Schluff- und Sandgehalts."
 ```
 
-```{r, warning=FALSE, fig.height=2.5, out.width='60%', fig.cap=cap, fig.align='center'}
+```{r, warning=FALSE, fig.height=2.5, out.width='60%', fig.cap=cap, fig.align='center', eval=TRUE}
 #plot(raster_bodenklasse, breaks=farben$Nr, col = farben$farbe_scaled)
 temp <-as.data.frame(raster_bodenklasse, xy = T) %>%
         #UTM-Koordinaten in Distanzen umwandeln für Plot
@@ -300,7 +324,7 @@ ggplot(temp, aes(x = x_distanz_m, y = y_distanz_m, fill = as.factor(Bodenklasse)
 cap2 <- "Bodentextur-Klasse der beobachteten Fläche. Aus den Karten extrahierte Klassen sind für jedes Pixel als Punkt markiert (schwarz). "
 ```
 
-```{r, fig.width=6, fig.height=6, out.width='60%', fig.align='center', fig.cap=cap2}
+```{r, fig.width=6, fig.height=6, out.width='60%', fig.align='center', fig.cap=cap2, eval=TRUE}
 par(pin=c(6,6), cex=0.5, cex.axis = 0.5, cex.lab = 0.5, cex.main = 0.5, lwd = 0.5)#, family="Arial")
 TT.plot(main = "",
         class.sys = "DE.BK94.TT",
