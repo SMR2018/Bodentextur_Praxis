@@ -1,0 +1,6 @@
+*.rmd linguist-detectable=true
+*.html linguist-detectable=false
+*.java linguist-detectable=false
+*.js linguist-detectable=false
+*.css linguist-detectable=false
+*.csv linguist-detectable=false
