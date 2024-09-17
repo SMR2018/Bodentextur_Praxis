@@ -4,3 +4,4 @@
 *.js linguist-detectable=false
 *.css linguist-detectable=false
 *.csv linguist-detectable=false
+*.QML linguist-detectable=false
